@@ -31,3 +31,9 @@ build/
 !**/src/test/**/build/
 
 .vscode/
+
+# Security
+application.properties
+
+# Logs
+*.log
