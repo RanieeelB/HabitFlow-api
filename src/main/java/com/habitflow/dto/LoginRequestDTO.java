@@ -1,4 +1,6 @@
 package com.habitflow.dto;
 
-public class LoginRequestDTO {
+
+public record LoginRequestDTO(String email, String password) {
+
 }
