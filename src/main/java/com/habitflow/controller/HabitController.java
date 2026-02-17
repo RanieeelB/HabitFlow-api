@@ -26,4 +26,10 @@ public class HabitController {
     public ResponseEntity<List<HabitResponseDTO>> getMyHabits() {
         return ResponseEntity.ok(habitService.getMyHabits());
     }
+
+    @PostMapping("/{id}/check")
+    public ResponseEntity<Void> toggleCheckIn(@PathVariable Long id) {
+        habitService.toggleCheckIn(id);
+        return ResponseEntity.ok().build();
+    }
 }
