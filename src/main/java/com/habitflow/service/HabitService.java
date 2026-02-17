@@ -2,21 +2,25 @@ package com.habitflow.service;
 
 import com.habitflow.dto.HabitRequestDTO;
 import com.habitflow.dto.HabitResponseDTO;
+import com.habitflow.entity.Frequency;
 import com.habitflow.entity.Habit;
-import com.habitflow.entity.HabitHistory; // Import novo
+import com.habitflow.entity.HabitHistory;
 import com.habitflow.entity.User;
-import com.habitflow.repository.HabitHistoryRepository; // Import novo
+import com.habitflow.exception.NotFoundException;
+import com.habitflow.repository.HabitHistoryRepository;
 import com.habitflow.repository.HabitRepository;
 import com.habitflow.repository.UserRepository;
+import com.habitflow.security.AuthenticatedUserService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;     // Import novo
-import java.time.LocalDateTime; // Import novo
+import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;      // Import novo
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -26,10 +30,13 @@ public class HabitService {
     private final UserRepository userRepository;
     private final HabitHistoryRepository habitHistoryRepository;
 
+
+    private final AuthenticatedUserService authUserService;
+
     private User getCurrentUser() {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        String email = authUserService.getEmail();
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("Usuário não encontrado"));
+                .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
     }
 
     public HabitResponseDTO createHabit(HabitRequestDTO request) {
@@ -56,23 +63,36 @@ public class HabitService {
         );
     }
 
-    public List<HabitResponseDTO> getMyHabits() {
+    public Page<HabitResponseDTO> getMyHabits(
+            String search,
+            Frequency frequency,
+            Boolean completedToday,
+            Pageable pageable
+    ) {
         User user = getCurrentUser();
         LocalDate today = LocalDate.now();
 
+        Page<Habit> habitsPage = habitRepository.findWithFilters(
+                user.getId(),
+                search,
+                frequency,
+                pageable
+        );
 
-        List<Habit> habits = habitRepository.findAllByUserId(user.getId());
-
-
-        List<HabitHistory> historyToday = habitHistoryRepository.findAllByHabit_User_IdAndDate(user.getId(), today);
-
+        List<HabitHistory> historyToday =
+                habitHistoryRepository.findAllByHabit_User_IdAndDate(user.getId(), today);
 
         List<Long> completedHabitIds = historyToday.stream()
                 .map(h -> h.getHabit().getId())
                 .toList();
 
+        List<HabitResponseDTO> dtoList = habitsPage.getContent().stream()
+                .filter(habit -> {
+                    if (completedToday == null) return true;
 
-        return habits.stream()
+                    boolean isCompleted = completedHabitIds.contains(habit.getId());
+                    return completedToday ? isCompleted : !isCompleted;
+                })
                 .map(habit -> new HabitResponseDTO(
                         habit.getId(),
                         habit.getName(),
@@ -82,12 +102,20 @@ public class HabitService {
                         calculateStreak(habit.getId())
                 ))
                 .toList();
+
+        return new org.springframework.data.domain.PageImpl<>(
+                dtoList,
+                pageable,
+                habitsPage.getTotalElements()
+        );
     }
-    public void toggleCheckIn(Long habitId) {
+
+
+    public void toggleCheckIn(Long habitId) throws NotFoundException {
         User user = getCurrentUser();
 
         Habit habit = habitRepository.findById(habitId)
-                .orElseThrow(() -> new RuntimeException("Hábito não encontrado"));
+                .orElseThrow(() -> new NotFoundException("Hábito não encontrado"));
 
         if (!habit.getUser().getId().equals(user.getId())) {
             throw new RuntimeException("Você não tem permissão para alterar este hábito");
@@ -109,8 +137,8 @@ public class HabitService {
 
 
     }
+
     private int calculateStreak(Long habitId) {
-        // Busca todos os check-ins do mais recente para o mais antigo
         List<HabitHistory> history = habitHistoryRepository.findAllByHabitIdOrderByDateDesc(habitId);
 
         if (history.isEmpty()) return 0;
@@ -128,11 +156,11 @@ public class HabitService {
                 streak++;
                 expectedDate = expectedDate.minusDays(1);
             } else if (log.getDate().isBefore(expectedDate)) {
-                // Se houver um buraco nas datas, a sequência quebrou
                 break;
             }
         }
 
         return streak;
     }
+
 }

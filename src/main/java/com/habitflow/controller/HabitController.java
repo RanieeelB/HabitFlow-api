@@ -2,13 +2,15 @@ package com.habitflow.controller;
 
 import com.habitflow.dto.HabitRequestDTO;
 import com.habitflow.dto.HabitResponseDTO;
+import com.habitflow.entity.Frequency;
 import com.habitflow.service.HabitService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/habits")
@@ -22,9 +24,14 @@ public class HabitController {
         return ResponseEntity.status(HttpStatus.CREATED).body(habitService.createHabit(request));
     }
 
-    @GetMapping
-    public ResponseEntity<List<HabitResponseDTO>> getMyHabits() {
-        return ResponseEntity.ok(habitService.getMyHabits());
+    @GetMapping("/my")
+    public Page<HabitResponseDTO> getMyHabits(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Frequency frequency,
+            @RequestParam(required = false) Boolean completedToday,
+            Pageable pageable
+    ) {
+        return habitService.getMyHabits(search, frequency, completedToday, pageable);
     }
 
     @PostMapping("/{id}/check")

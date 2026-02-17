@@ -4,6 +4,7 @@ import com.habitflow.dto.AuthenticationResponseDTO;
 import com.habitflow.dto.LoginRequestDTO;
 import com.habitflow.dto.RegisterRequestDTO;
 import com.habitflow.service.AuthService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,9 +20,8 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/register")
-    public ResponseEntity<AuthenticationResponseDTO> register(
-            @RequestBody RegisterRequestDTO request
-    ) {
+    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequestDTO request)
+    {
         return ResponseEntity.ok(authService.register(request));
     }
 
