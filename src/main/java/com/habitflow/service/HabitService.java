@@ -51,7 +51,8 @@ public class HabitService {
                 habit.getName(),
                 habit.getDescription(),
                 habit.getFrequency(),
-                false
+                false,
+                0
         );
     }
 
@@ -77,7 +78,8 @@ public class HabitService {
                         habit.getName(),
                         habit.getDescription(),
                         habit.getFrequency(),
-                        completedHabitIds.contains(habit.getId())
+                        completedHabitIds.contains(habit.getId()),
+                        calculateStreak(habit.getId())
                 ))
                 .toList();
     }
@@ -106,5 +108,31 @@ public class HabitService {
         }
 
 
+    }
+    private int calculateStreak(Long habitId) {
+        // Busca todos os check-ins do mais recente para o mais antigo
+        List<HabitHistory> history = habitHistoryRepository.findAllByHabitIdOrderByDateDesc(habitId);
+
+        if (history.isEmpty()) return 0;
+
+        int streak = 0;
+        LocalDate expectedDate = LocalDate.now();
+
+        // Se não fez hoje, começamos a verificar a partir de ontem
+        if (!history.get(0).getDate().equals(expectedDate)) {
+            expectedDate = expectedDate.minusDays(1);
+        }
+
+        for (HabitHistory log : history) {
+            if (log.getDate().equals(expectedDate)) {
+                streak++;
+                expectedDate = expectedDate.minusDays(1);
+            } else if (log.getDate().isBefore(expectedDate)) {
+                // Se houver um buraco nas datas, a sequência quebrou
+                break;
+            }
+        }
+
+        return streak;
     }
 }

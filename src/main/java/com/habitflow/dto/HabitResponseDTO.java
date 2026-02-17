@@ -7,5 +7,6 @@ public record HabitResponseDTO(
         String name,
         String description,
         Frequency frequency,
-        boolean completedToday
+        boolean completedToday,
+        int streak
 ) {}

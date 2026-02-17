@@ -14,4 +14,6 @@ public interface HabitHistoryRepository extends JpaRepository<HabitHistory, Long
     Optional<HabitHistory> findByHabitIdAndDate(Long habitId, LocalDate date);
 
     List<HabitHistory> findAllByHabit_User_IdAndDate(Long userId, LocalDate date);
+
+    List<HabitHistory> findAllByHabitIdOrderByDateDesc(Long habitId);
 }
